@@ -16,10 +16,11 @@ class solverKarg():
             while indexOfNumFiles < numFiles:
                 try:
                     self.initialize()
-                    prime_implicants, essential_implicants, functions = self.quineMcCluskey()
+
+                    essential_implicants, functions = self.resolveMap()
                     
                     print("\nThe prime implicants are:")
-                    self.printing(prime_implicants,',')
+                    self.printing([x[0] for x in self.primeImplicants],',')
 
                     print("\nThe essential implicants are:")
                     self.printing(essential_implicants,',')
@@ -42,6 +43,13 @@ class solverKarg():
                         return 0
 
     def initialize(self):
+        self.nameStudents = ["Ian Picado", "Jaron Cascante"]
+        self.lastRunDate = datetime.now()
+        self.numOfVariables = 0
+        self.miniTerms = []
+        self.miniTermsCategorised = {}
+        self.primeImplicants = []
+
         fileName = str(input("Enter the name of the file:\n"))
         function = ""
         
@@ -66,6 +74,7 @@ class solverKarg():
             self.miniTermsCategorised[i.count("1")].append([i,[int(i,2)]])
 
     def printing(self,mainList,char):
+        print(mainList)
         for string in mainList:
             count=-1
             for i in string:
@@ -81,11 +90,13 @@ class solverKarg():
         newTerms={}
         usedTerms=[]
         isRecursive=False
+
         for i in range(number):
             newTerms[i]=[]
-        for i in range(number):
+
             for element1 in terms[i]:
                 flag=0
+                
                 for element2 in terms[i+1]:
                     count=0
                     combined=[]
@@ -94,10 +105,11 @@ class solverKarg():
                         if element2[0][l]!=element1[0][l]:
                             combined[l]='-'
                             count+=1
+                            
                     if not count > 1:
-                        new_implicant = ["".join(combined),element1[1]+element2[1]] 
                         isRecursive=True
                         flag=1
+                        new_implicant = ["".join(combined),element1[1]+element2[1]] 
                         newTerms[i].append(new_implicant)
                         if element1[0] not in usedTerms:
                             usedTerms.append(element1[0])
@@ -115,8 +127,8 @@ class solverKarg():
 
     def getAllSelected(self,POS,temp,allSelected,index):
         if index==len(POS):
-            temp1=temp+[]
-            allSelected.append(temp1)
+            print(index, " ", temp)
+            allSelected.append(temp)
             return
         else:
             for i in POS[index]:
@@ -127,19 +139,6 @@ class solverKarg():
                 else:
                     self.getAllSelected(POS,temp,allSelected,index+1)
 
-    def petrickMethod(self,table,selected_implicants):
-        temp=[]
-        POS=[]
-        allSelected=[]
-        for i in table:
-            POS.append(table[i])
-        self.getAllSelected(POS,temp,allSelected,0)
-
-        for i in allSelected:
-            if len(i)==min([len(x) for x in allSelected]):
-                if i not in selected_implicants:
-                    selected_implicants.append(i)
-
     def getcount(self,mainList):
         count =0
         for string in [x[0] for x in mainList]:
@@ -149,23 +148,23 @@ class solverKarg():
 
         return count
 
-    def quineMcCluskey(self):
+    def resolveMap(self):
+        minimum=999999
         table={}
         essential_implicants = []
         selected_implicants = []
         minimal_implicants = []
         functions = []
+        temp=[]
+        POS=[]
+        allSelected=[]
 
         self.getPrimeImplicants(self.miniTermsCategorised, self.numOfVariables)
-        print(self.miniTermsCategorised)
+
         for i,j in self.miniTermsCategorised.items():
             for k in j:
-                print(k)
                 table[k[1][0]]=[]
-
-        for j in self.miniTermsCategorised:
-                for k in self.miniTermsCategorised[i]:
-                    print(k)
+                    
         for i in self.primeImplicants:
             for j in i[1]:
                 table[j].append(i)
@@ -180,9 +179,17 @@ class solverKarg():
                 if j in [x for x in table]:
                     del table[j]
 
-        self.petrickMethod(table,selected_implicants)
+        for i in table:
+            POS.append(table[i])
+        print(POS)
 
-        minimum=999999
+        self.getAllSelected(POS,temp,allSelected,0)
+
+        for i in allSelected:
+            if len(i)==min([len(x) for x in allSelected]):
+                if i not in selected_implicants:
+                    selected_implicants.append(i)
+
         for i in selected_implicants:
             if self.getcount(i)<minimum:
                 minimum=self.getcount(i)
@@ -194,13 +201,12 @@ class solverKarg():
         for i in minimal_implicants:
             functions.append( essential_implicants+i )
 
-        prime_implicants = [x[0] for x in self.primeImplicants]
         essential_implicants = [x[0] for x in essential_implicants]
 
         for i in range (len(functions)):
             functions[i] = [x[0] for x in functions[i]]
 
-        return prime_implicants, essential_implicants, functions
+        return essential_implicants, functions
 
 
                     
