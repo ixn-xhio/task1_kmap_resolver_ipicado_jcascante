@@ -1,4 +1,5 @@
 from utils.textFiles import *
+from utils.binUtils import *
 from datetime import datetime
 
 class solverKarg():
@@ -6,7 +7,9 @@ class solverKarg():
         self.nameStudents = ["Ian Picado", "Jaron Cascante"]
         self.lastRunDate = datetime.now()
         self.numOfVariables = 0
+        self.variables = []
         self.miniTerms = []
+
         self.miniTermsCategorised = {}
         self.primeImplicants = []
 
@@ -16,18 +19,20 @@ class solverKarg():
             while indexOfNumFiles < numFiles:
                 try:
                     self.initialize()
+                    self.processMiniterms()
+                    # self.getPrimeImplicants(self.miniTermsCategorised, self.numOfVariables)
 
-                    essential_implicants, functions = self.resolveMap()
-                    
-                    print("\nThe prime implicants are:")
-                    self.printing([x[0] for x in self.primeImplicants],',')
+                    # essential_implicants, functions = self.resolveFn()
+                    # print(functions)
+                    # print("\nThe prime implicants are:")
+                    # self.printing([x[0] for x in self.primeImplicants],',')
 
-                    print("\nThe essential implicants are:")
-                    self.printing(essential_implicants,',')
+                    # print("\nThe essential implicants are:")
+                    # self.printing(essential_implicants,',')
 
-                    print("\nThe possible functions are:")
-                    for i in functions :
-                        self.printing(i,'+')
+                    # print("\nThe possible functions are:")
+                    # for i in functions :
+                    #     self.printing(i,'+')
                     indexOfNumFiles+=1
 
                 except Exception as e:
@@ -41,7 +46,19 @@ class solverKarg():
 
                     if res in ["N", 'n']:
                         return 0
-
+    
+    def printing(self,mainList,char):
+        for char in mainList:
+            count=-1
+            for i in range(len(str(char))):
+                count+=1
+                if str(char[i])=='0':
+                    print(self.variables[count]+"'",end="")
+                elif str(char[i]) =="1":
+                    print(self.variables[count],end="")
+            print("  "+"+"+"  ",end="")
+        print("\b\b\b \n")
+        
     def initialize(self):
         self.nameStudents = ["Ian Picado", "Jaron Cascante"]
         self.lastRunDate = datetime.now()
@@ -64,29 +81,17 @@ class solverKarg():
         self.variables = [str(x.replace(" ", "")) for x in thisVariables.split(",")]
         self.numOfVariables = len(self.variables)
 
-        thisMiniterms = function.split("=")[1].split("/")[0]
-        thisMiniterms = [int(x) for x in thisMiniterms.split(",")]
-        self.miniTerms = [format(int(x), f'0'+str(self.numOfVariables)+'b') for x in thisMiniterms]
+        self.dontCare = [int(x) for x in function.split("/")[1] if x.isdigit() == True] if "/" in function else []
+        self.miniTerms = [hexToBin(int(x), self.numOfVariables) for x in function if x.isdigit() == True]
+        
+        for i in range(self.numOfVariables + 1):
+            self.miniTermsCategorised[i] = None
 
-        for i in range (self.numOfVariables+1):
-            self.miniTermsCategorised[i]=[]
         for i in self.miniTerms:
-            self.miniTermsCategorised[i.count("1")].append([i,[int(i,2)]])
-
-    def printing(self,mainList,char):
-        print(mainList)
-        for string in mainList:
-            count=-1
-            for i in string:
-                count+=1
-                if i=='0':
-                    print(chr(ord('a')+count)+"'",end="")
-                elif i =="1":
-                    print(chr(ord('a')+count),end="")
-            print(" "+char+" ",end="")
-        print("\b\b\b \n")
+            self.miniTermsCategorised[i.count("1")] = i
     
     def getPrimeImplicants(self, terms: dict = {}, number = 0):
+        
         newTerms={}
         usedTerms=[]
         isRecursive=False
@@ -100,13 +105,14 @@ class solverKarg():
                 for element2 in terms[i+1]:
                     count=0
                     combined=[]
+                    
                     for l in range(len(element1[0])):
                         combined.append(element1[0][l])
                         if element2[0][l]!=element1[0][l]:
                             combined[l]='-'
                             count+=1
                             
-                    if not count > 1:
+                    if count <= 1:
                         isRecursive=True
                         flag=1
                         new_implicant = ["".join(combined),element1[1]+element2[1]] 
@@ -125,41 +131,78 @@ class solverKarg():
         else:
             return
 
-    def getAllSelected(self,POS,temp,allSelected,index):
-        if index==len(POS):
-            print(index, " ", temp)
-            allSelected.append(temp)
-            return
-        else:
-            for i in POS[index]:
-                if i not in temp:
-                    temp.append(i)
-                    self.getAllSelected(POS,temp,allSelected,index+1)
-                    temp.remove(i)
-                else:
-                    self.getAllSelected(POS,temp,allSelected,index+1)
+    def condition1(self,  k, i):
+        return self.miniTermsCategorised[k][i] != self.miniTermsCategorised[k + 1][i] \
+            if self.miniTermsCategorised[k + 1] != None else False
+    
+    def condition2(self, a, k, i):
+        if(k == len(a) - 1):
+            return False
+        return a[k][i] != a[k + 1][i]
+           
+    def processMiniterms(self):
+        a, b = [], []
 
-    def getcount(self,mainList):
+        for k in self.miniTermsCategorised:
+            count = 0
+            combined = []
+            for i in range(self.numOfVariables):
+                if self.miniTermsCategorised[k] is not None:
+                    combined.append(self.miniTermsCategorised[k][i])
+                    if(self.condition1(k, i)):
+                        combined[i] = "-"
+                        count += 1
+            if(count == 1):
+                a.append(combined)
+        print(a)
+
+        for k in range(len(a)):
+            count = 0
+            combined = []
+            for i in range(len(a[k])):
+                combined.append(a[k][i])
+                if(self.condition2(a, k, i)):
+                    combined[i] = "-"
+                    count += 1
+            if(count == 1):
+                b.append(combined)
+
+        print(b)
+
+
+        # def step2(b):
+        #     for k in range(len(b)):
+        #         count = 0
+        #         combined = []
+        #         for i in range(len(self.numOfVariables)):
+        #             combined.append(b)
+        #             if(condition(k, i)):
+        #                 combined[i] = "-"
+        #                 count += 1
+        #         if(count == 1):
+        #             a.append(combined)
+
+
+
+
+
+    def count(self,mainList):
         count =0
-        for string in [x[0] for x in mainList]:
-            for i in string:
-                if i=='0' or i=='1':
+        for char in mainList:
+            for i in range(len(mainList[1])):
+                if char[i] =='0' or char[i]=='1':
                     count+=1
 
         return count
 
-    def resolveMap(self):
+    def resolveFn(self):
         minimum=999999
         table={}
         essential_implicants = []
         selected_implicants = []
+        missing_implicants = []
         minimal_implicants = []
         functions = []
-        temp=[]
-        POS=[]
-        allSelected=[]
-
-        self.getPrimeImplicants(self.miniTermsCategorised, self.numOfVariables)
 
         for i,j in self.miniTermsCategorised.items():
             for k in j:
@@ -172,41 +215,61 @@ class solverKarg():
         for i in [x for x in table if len(table[x])==1]:
             if table[i][0] not in essential_implicants:
                 essential_implicants.append(table[i][0])
-            del table[i]
+        
+        used_implicants = []
 
-        for i in essential_implicants:
-            for j in i[1]:
-                if j in [x for x in table]:
-                    del table[j]
+        for x in essential_implicants:
+            for i in x[1]:
+                if i not in used_implicants:
+                    used_implicants.append(i)
+
+        
+        for i in self.miniTerms:
+            term = int(i,2)
+            if term not in used_implicants:
+                missing_implicants.append(term)
+        
+        maximum = 0
 
         for i in table:
-            POS.append(table[i])
-        print(POS)
+            for w in table[i]:
+                count = 0
+                for j in w[1]:
+                    if j in missing_implicants:
+                        count +=1
+                if count > maximum:
+                    maximum = count
 
-        self.getAllSelected(POS,temp,allSelected,0)
-
-        for i in allSelected:
-            if len(i)==min([len(x) for x in allSelected]):
-                if i not in selected_implicants:
-                    selected_implicants.append(i)
+        for i in table:
+            for w in table[i]:
+                count = 0
+                for j in w[1]:
+                    if j in missing_implicants:
+                        count +=1
+                if count == maximum:
+                    if w not in selected_implicants:
+                        selected_implicants.append(w)
 
         for i in selected_implicants:
-            if self.getcount(i)<minimum:
-                minimum=self.getcount(i)
+            if self.count(i)<minimum:
+                minimum=self.count(i)
 
         for i in selected_implicants:
-            if self.getcount(i)==minimum:
+            if self.count(i)==minimum:
                 minimal_implicants.append(i)
         
         for i in minimal_implicants:
             functions.append( essential_implicants+i )
+        print(functions)
 
         essential_implicants = [x[0] for x in essential_implicants]
 
+        for char in mainList:
+            for i in range(len(functions)):
+                functions[i] = []
+
         for i in range (len(functions)):
             functions[i] = [x[0] for x in functions[i]]
-
+ 
         return essential_implicants, functions
-
-
-                    
+   
