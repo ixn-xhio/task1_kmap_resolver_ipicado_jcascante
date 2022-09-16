@@ -23,10 +23,7 @@ class solverKarg():
                 try:
                     self.initialize()
                     self.processMiniterms()
-                    self.resolveFn()
-                    # self.getPrimeImplicants(self.miniTermsCategorised, self.numOfVariables)
-
-                    # essential_implicants, functions = self.resolveFn()
+                    essential_implicants, functions = self.resolveFn()
                     # print(functions)
                     # print("\nThe prime implicants are:")
                     # self.printing([x[0] for x in self.primeImplicants],',')
@@ -34,9 +31,9 @@ class solverKarg():
                     # print("\nThe essential implicants are:")
                     # self.printing(essential_implicants,',')
 
-                    # print("\nThe possible functions are:")
-                    # for i in functions :
-                    #     self.printing(i,'+')
+                    print("\nThe possible functions are:")
+                    for i in functions :
+                        self.printing(i,'+')
                     indexOfNumFiles+=1
 
                 except Exception as e:
@@ -332,8 +329,6 @@ class solverKarg():
                             'hex': group13[i]['hex'] + group14[j]['hex']
                         })
 
-        print(group15,group16,group17)
-
         group18,group19 = [], []
 
         for i in range(len(group15)):
@@ -367,9 +362,7 @@ class solverKarg():
                             'bin': combined,
                             'hex': group16[i]['hex'] + group17[j]['hex']
                         })
-        
-        print(group18,group19)
-        
+
         group20 = []
 
         for i in range(len(group18)):
@@ -517,11 +510,10 @@ class solverKarg():
         self.primeImplicants = z
 
     def count(self,mainList):
-        count =0
-        for char in mainList:
-            for i in range(len(mainList[1])):
-                if char[i] =='0' or char[i]=='1':
-                    count+=1
+        count = 0
+        for i in range(len(mainList["bin"])):
+            if mainList["bin"][i] =='0' or mainList["bin"][i]=='1':
+                count+=1
 
         return count
 
@@ -548,13 +540,13 @@ class solverKarg():
         used_implicants = []
 
         for x in essential_implicants:
-            for i in x[1]:
+            for i in x["hex"]:
                 if i not in used_implicants:
                     used_implicants.append(i)
 
         
         for i in self.miniTerms:
-            term = int(i,2)
+            term = binToHex(i)
             if term not in used_implicants:
                 missing_implicants.append(term)
         
@@ -563,7 +555,7 @@ class solverKarg():
         for i in table:
             for w in table[i]:
                 count = 0
-                for j in w[1]:
+                for j in w["hex"]:
                     if j in missing_implicants:
                         count +=1
                 if count > maximum:
@@ -572,13 +564,13 @@ class solverKarg():
         for i in table:
             for w in table[i]:
                 count = 0
-                for j in w[1]:
+                for j in w["hex"]:
                     if j in missing_implicants:
                         count +=1
                 if count == maximum:
                     if w not in selected_implicants:
                         selected_implicants.append(w)
-
+        
         for i in selected_implicants:
             if self.count(i)<minimum:
                 minimum=self.count(i)
@@ -586,18 +578,13 @@ class solverKarg():
         for i in selected_implicants:
             if self.count(i)==minimum:
                 minimal_implicants.append(i)
-        
-        for i in minimal_implicants:
-            functions.append( essential_implicants+i )
 
-        essential_implicants = [x[0] for x in essential_implicants]
+        functions.append( essential_implicants+minimal_implicants )
 
-        for char in mainList:
-            for i in range(len(functions)):
-                functions[i] = []
+        essential_implicants = [x["bin"] for x in essential_implicants]
 
         for i in range (len(functions)):
-            functions[i] = [x[0] for x in functions[i]]
- 
+            functions[i] = [x["bin"] for x in functions[i]]
+
         return essential_implicants, functions
    
