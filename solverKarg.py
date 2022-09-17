@@ -114,7 +114,7 @@ class solverKarg():
         group0,group1,group2,group3,group4,group5 = [], [], [], [], [], []
 
         try:
-            for i in self.miniTermsMerged:
+            for i in self.miniTerms:
                 if i.count("1") == 0:
                     group0.append({ 
                         'bin': i,
@@ -149,7 +149,8 @@ class solverKarg():
                     raise Exception("more than 5 variables found!")
         except Exception as error:
             print(str(error))
-
+    
+        #combinamos los grupos con un maximo de diferencia en un minitermino
         group6,group7,group8,group9,group10 = [], [], [], [], []
 
         group6 = firstCompare(group0, group1, group6, self.numOfVariables)
@@ -178,11 +179,13 @@ class solverKarg():
 
         group20 = []
 
+        #combinamos con un maximo de 3 diferencias
         group20 = thirdCompare(group18, group19, group20, self.numOfVariables)
 
         primeImplicants = group20
         flag = 0
 
+        #obtenemos el grupo anterior
         if len(primeImplicants) == 0:
             primeImplicants = group19 + group18
             flag = 1
@@ -199,11 +202,12 @@ class solverKarg():
         usedImplicants = []
         missingImplicants = []
 
+        #si faltan miniterminos en el grupo seleccionado, se completa con el grupo anterior
         for f in primeImplicants:
             for y in f['hex']:
                 usedImplicants.append(y)
 
-        for y in self.miniTermsMerged:
+        for y in self.miniTerms:
             if binToHex(y) not in usedImplicants:
                 missingImplicants.append(binToHex(y))
         
@@ -237,14 +241,18 @@ class solverKarg():
         minimum=math.inf
         maximum = 0
 
-        #se agrupan los implicantes primos por miniterminos en una tabla
-        #con los miniterminos como columns y los implicantes como records
+        #se agrupan los implicantes primos entre miniterminos 
+        #son esenciales si solo un implicante tiene al minitermino
         
+        for i in self.primeImplicants:
+            for j in i["hex"]:
+                if j in [binToHex(x) for x in self.dontCares]:
+                    del self.primeImplicants[self.primeImplicants.index(i)]["hex"][i["hex"].index(j)]
+
         for x in self.miniTerms:
             count = 0
             match = None
             for i in self.primeImplicants:
-                print(i)
                 for j in i["hex"]:
                     if binToHex(x) == j:
                         count += 1
@@ -262,9 +270,10 @@ class solverKarg():
             if binToHex(i) not in usedImplicants:
                 missingImplicants.append(binToHex(i))
 
-        for i in self.primeImplicants:
+        #se completan los implicantes esenciales
+        for implicant in self.primeImplicants:
             count = 0
-            for j in i["hex"]:
+            for j in implicant["hex"]:
                 if j in missingImplicants:
                         count += 1
                 if count > maximum:
@@ -277,8 +286,9 @@ class solverKarg():
                         count += 1
                 if count == maximum:
                     if implicant not in selectedImplicants:
-                        selectedImplicants.append(i)
+                        selectedImplicants.append(implicant)
         
+
         #tomamos el implicante con menos unos para optimizar memoria
         for implicant in selectedImplicants:
             count = 0
@@ -297,6 +307,5 @@ class solverKarg():
                 if implicant not in essentialImplicants:
                     essentialImplicants.append(implicant)
 
-        print(essentialImplicants)
         self.essentialImplicants = [x["bin"] for x in essentialImplicants]
    
