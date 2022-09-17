@@ -1,62 +1,95 @@
-from utils.textFiles import *
+from utils.tools import *
+from utils.binTools import *
 from datetime import datetime
+import math
 
 class solverKarg():
     def __init__(self):
         self.nameStudents = ["Ian Picado", "Jaron Cascante"]
         self.lastRunDate = datetime.now()
         self.numOfVariables = 0
+        self.variables = []
         self.miniTerms = []
-        self.miniTermsCategorised = {}
+        self.dontCares = []
+        self.miniTermsMerged = []
         self.primeImplicants = []
+        self.essentialImplicants = []
 
     def run(self):
-            numFiles = int(input("Enter the number of files:\n"))
-            indexOfNumFiles = 0
-            while indexOfNumFiles < numFiles:
-                try:
-                    self.initialize()
+            exitProject = 0
+            while exitProject == 0:
+                numFiles = int(input("\nEnter the number of files:\n"))
+                indexOfNumFiles = 0
+                while indexOfNumFiles < numFiles:
+                    try:
+                        self.initialize()
+                        self.processMiniterms()
+                        self.resolveFn()
 
-                    essential_implicants, functions = self.resolveMap()
-                    
-                    print("\nThe prime implicants are:")
-                    self.printing([x[0] for x in self.primeImplicants],',')
+                        print("\nThe simplified function is:\n")
 
-                    print("\nThe essential implicants are:")
-                    self.printing(essential_implicants,',')
+                        for term in self.essentialImplicants:
+                            count=0
+                            for i in range(len(term)):
+                                if term[i]=='0':
+                                    print(f""+self.variables[count]+"'",end="")
+                                elif term[i] =="1":
+                                    print(self.variables[count],end="")
+                                count+=1
+                            if len(self.essentialImplicants) -1 != self.essentialImplicants.index(term):
+                                print(" + ",end="") 
+                            else:
+                                print("\n")
 
-                    print("\nThe possible functions are:")
-                    for i in functions :
-                        self.printing(i,'+')
-                    indexOfNumFiles+=1
+                        input("Press Enter to continue...\n")
+                        clear()
+                        indexOfNumFiles+=1
 
-                except Exception as e:
-                    print(e)
-                    res = ''
-                    flag = False
-                    while flag == False:
-                        res = str(input("you wanna try again? write 'Y' or 'N'\n"))
-                        if res in ["Y", "y", "N", "n"]:
-                            flag = True
+                        if indexOfNumFiles == numFiles:
+                            flag = False
+                            while flag == False:
+                                res = str(input("\nYou want to run again the project? write 'Y' or 'N':\n"))
+                                if res in ["Y", "y", "N", "n"]:
+                                    flag = True
+                            if res in ["N", 'n']:
+                                exitProject = 1
+                            else:
+                                clear()
 
-                    if res in ["N", 'n']:
-                        return 0
+                    except Exception as e:
+                        print(e)
+                        res = ''
+                        flag = False
+                        while flag == False:
+                            res = str(input("\nyou wanna try again? write 'Y' or 'N'\n"))
+                            if res in ["Y", "y", "N", "n"]:
+                                flag = True
 
+                        if res in ["N", 'n']:
+                            return 0
+            
+            
+
+        
     def initialize(self):
         self.nameStudents = ["Ian Picado", "Jaron Cascante"]
         self.lastRunDate = datetime.now()
         self.numOfVariables = 0
+        self.variables = []
         self.miniTerms = []
-        self.miniTermsCategorised = {}
+        self.dontCares = []
+        self.miniTermsMerged = []
         self.primeImplicants = []
+        self.essentialImplicants = []
 
-        fileName = str(input("Enter the name of the file:\n"))
-        function = ""
+        fileName = str(input("\nEnter the name of the file:\n"))
+        if ".txt" not in fileName:
+            fileName = fileName+".txt"
+        clear()
+
+        print(f"The specified file is: "+fileName)
         
-        if ".txt" in fileName:
-            function = readTextFile(f"./"+fileName)
-        else:
-            function = readTextFile(f"./"+fileName+".txt")
+        function = readTextFile(f"./"+fileName)
 
         function = function.split("f(")[1]
 
@@ -64,149 +97,206 @@ class solverKarg():
         self.variables = [str(x.replace(" ", "")) for x in thisVariables.split(",")]
         self.numOfVariables = len(self.variables)
 
-        thisMiniterms = function.split("=")[1].split("/")[0]
-        thisMiniterms = [int(x) for x in thisMiniterms.split(",")]
-        self.miniTerms = [format(int(x), f'0'+str(self.numOfVariables)+'b') for x in thisMiniterms]
+        minis = function.split("=")[1].split("/")[0] 
+        self.miniTerms = [hexToBin(int(x), self.numOfVariables) for x in [int(x) for x in minis.split(",")]]
 
-        for i in range (self.numOfVariables+1):
-            self.miniTermsCategorised[i]=[]
-        for i in self.miniTerms:
-            self.miniTermsCategorised[i.count("1")].append([i,[int(i,2)]])
+        if len(function.split("=")[1].split("/")) > 1:
+            dcares = function.split("=")[1].split("/")[1] 
+            self.dontCares = [hexToBin(int(x), self.numOfVariables) for x in [int(x) for x in dcares.split(",")]]
 
-    def printing(self,mainList,char):
-        print(mainList)
-        for string in mainList:
-            count=-1
-            for i in string:
-                count+=1
-                if i=='0':
-                    print(chr(ord('a')+count)+"'",end="")
-                elif i =="1":
-                    print(chr(ord('a')+count),end="")
-            print(" "+char+" ",end="")
-        print("\b\b\b \n")
-    
-    def getPrimeImplicants(self, terms: dict = {}, number = 0):
-        newTerms={}
-        usedTerms=[]
-        isRecursive=False
+        self.miniTermsMerged = self.miniTerms + self.dontCares
 
-        for i in range(number):
-            newTerms[i]=[]
+    def processMiniterms(self):
 
-            for element1 in terms[i]:
-                flag=0
-                
-                for element2 in terms[i+1]:
-                    count=0
-                    combined=[]
-                    for l in range(len(element1[0])):
-                        combined.append(element1[0][l])
-                        if element2[0][l]!=element1[0][l]:
-                            combined[l]='-'
-                            count+=1
-                            
-                    if not count > 1:
-                        isRecursive=True
-                        flag=1
-                        new_implicant = ["".join(combined),element1[1]+element2[1]] 
-                        newTerms[i].append(new_implicant)
-                        if element1[0] not in usedTerms:
-                            usedTerms.append(element1[0])
-                        if element2[0] not in usedTerms:
-                            usedTerms.append(element2[0])
+        #primero se agrupan los miniterminos (con condiciones de no importa)
+        #por el numero de 1 dentro de cada uno de los miniterminos
 
-                if flag==0:
-                    if element1[0] not in usedTerms and element1[0] not in [x[0] for x in self.primeImplicants]:
-                        self.primeImplicants.append(element1)
+        group0,group1,group2,group3,group4,group5 = [], [], [], [], [], []
 
-        if isRecursive:
-            self.getPrimeImplicants(newTerms,number-1)
-        else:
-            return
-
-    def getAllSelected(self,POS,temp,allSelected,index):
-        if index==len(POS):
-            print(index, " ", temp)
-            allSelected.append(temp)
-            return
-        else:
-            for i in POS[index]:
-                if i not in temp:
-                    temp.append(i)
-                    self.getAllSelected(POS,temp,allSelected,index+1)
-                    temp.remove(i)
+        try:
+            for i in self.miniTermsMerged:
+                if i.count("1") == 0:
+                    group0.append({ 
+                        'bin': i,
+                        'hex': int(i,2)
+                    })
+                elif i.count("1") == 1:
+                    group1.append({ 
+                        'bin': i,
+                        'hex': int(i,2)
+                    })
+                elif i.count("1") == 2:
+                    group2.append({ 
+                        'bin': i,
+                        'hex': int(i,2)
+                    })
+                elif i.count("1") == 3:
+                    group3.append({ 
+                        'bin': i,
+                        'hex': int(i,2)
+                    })
+                elif i.count("1") == 4:
+                    group4.append({ 
+                        'bin': i,
+                        'hex': int(i,2)
+                    })
+                elif i.count("1") == 5:
+                    group5.append({ 
+                        'bin': i,
+                        'hex': int(i,2)
+                    })
                 else:
-                    self.getAllSelected(POS,temp,allSelected,index+1)
+                    raise Exception("more than 5 variables found!")
+        except Exception as error:
+            print(str(error))
 
-    def getcount(self,mainList):
-        count =0
-        for string in [x[0] for x in mainList]:
-            for i in string:
-                if i=='0' or i=='1':
-                    count+=1
+        group6,group7,group8,group9,group10 = [], [], [], [], []
 
-        return count
+        group6 = firstCompare(group0, group1, group6, self.numOfVariables)
+        group7 = firstCompare(group1, group2, group7, self.numOfVariables)
+        group8 = firstCompare(group2, group3, group8, self.numOfVariables)
+        group9 = firstCompare(group3, group4, group9, self.numOfVariables)
+        group10 = firstCompare(group4, group5, group10, self.numOfVariables)
 
-    def resolveMap(self):
-        minimum=999999
-        table={}
-        essential_implicants = []
-        selected_implicants = []
-        minimal_implicants = []
-        functions = []
-        temp=[]
-        POS=[]
-        allSelected=[]
-
-        self.getPrimeImplicants(self.miniTermsCategorised, self.numOfVariables)
-
-        for i,j in self.miniTermsCategorised.items():
-            for k in j:
-                table[k[1][0]]=[]
-                    
-        for i in self.primeImplicants:
-            for j in i[1]:
-                table[j].append(i)
-
-        for i in [x for x in table if len(table[x])==1]:
-            if table[i][0] not in essential_implicants:
-                essential_implicants.append(table[i][0])
-            del table[i]
-
-        for i in essential_implicants:
-            for j in i[1]:
-                if j in [x for x in table]:
-                    del table[j]
-
-        for i in table:
-            POS.append(table[i])
-        print(POS)
-
-        self.getAllSelected(POS,temp,allSelected,0)
-
-        for i in allSelected:
-            if len(i)==min([len(x) for x in allSelected]):
-                if i not in selected_implicants:
-                    selected_implicants.append(i)
-
-        for i in selected_implicants:
-            if self.getcount(i)<minimum:
-                minimum=self.getcount(i)
-
-        for i in selected_implicants:
-            if self.getcount(i)==minimum:
-                minimal_implicants.append(i)
+        group11,group12,group13,group14 = [], [], [], []
         
-        for i in minimal_implicants:
-            functions.append( essential_implicants+i )
+        group11 = secondCompare(group6, group7, group11, self.numOfVariables)
+        group12 = secondCompare(group7, group8, group12, self.numOfVariables)
+        group13 = secondCompare(group8, group9, group13, self.numOfVariables)
+        group14 = secondCompare(group9, group10, group14, self.numOfVariables)
+        
+        group15,group16,group17 = [], [], []
 
-        essential_implicants = [x[0] for x in essential_implicants]
+        group15 = secondCompare(group11, group12, group15, self.numOfVariables)
+        group16 = secondCompare(group12, group13, group16, self.numOfVariables)
+        group17 = secondCompare(group13, group14, group17, self.numOfVariables)
 
-        for i in range (len(functions)):
-            functions[i] = [x[0] for x in functions[i]]
+        group18,group19 = [], []
 
-        return essential_implicants, functions
+        group18 = secondCompare(group15, group16, group18, self.numOfVariables)
+        group19 = secondCompare(group16, group17, group19, self.numOfVariables)
 
+        group20 = []
 
-                    
+        group20 = thirdCompare(group18, group19, group20, self.numOfVariables)
+
+        primeImplicants = group20
+        flag = 0
+
+        if len(primeImplicants) == 0:
+            primeImplicants = group19 + group18
+            flag = 1
+        if len(primeImplicants) == 0:
+            primeImplicants = group17 + group16 + group15
+            flag = 2
+        if len(primeImplicants) == 0:
+            primeImplicants = group14 + group13 + group12 + group11
+            flag = 3
+        if len(primeImplicants) == 0:
+            primeImplicants = group6 + group7 + group8 + group9 + group10
+            flag = 4
+
+        usedImplicants = []
+        missingImplicants = []
+
+        for f in primeImplicants:
+            for y in f['hex']:
+                usedImplicants.append(y)
+
+        for y in self.miniTermsMerged:
+            if binToHex(y) not in usedImplicants:
+                missingImplicants.append(binToHex(y))
+        
+        if flag == 0:
+            lastImplicantsGroup = group19 + group18
+            primeImplicants = completePrimeImplicants(lastImplicantsGroup, missingImplicants, primeImplicants)
+
+        elif flag == 1:
+            lastImplicantsGroup = group17 + group16 + group15
+            primeImplicants = completePrimeImplicants(lastImplicantsGroup, missingImplicants, primeImplicants)
+            
+
+        elif flag == 2:
+            lastImplicantsGroup = group14 + group13 + group12 + group11
+            primeImplicants = completePrimeImplicants(lastImplicantsGroup, missingImplicants, primeImplicants)
+            
+
+        elif flag == 3:
+            lastImplicantsGroup = group6 + group7 + group8 + group9 + group10
+            primeImplicants = completePrimeImplicants(lastImplicantsGroup, missingImplicants, primeImplicants)
+        else:
+            print("nothing here")
+
+        self.primeImplicants = primeImplicants
+
+    def resolveFn(self):
+        essentialImplicants = []
+        selectedImplicants = []        
+        usedImplicants = []
+        missingImplicants = []
+        minimum=math.inf
+        maximum = 0
+
+        #se agrupan los implicantes primos por miniterminos en una tabla
+        #con los miniterminos como columns y los implicantes como records
+        
+        for x in self.miniTerms:
+            count = 0
+            match = None
+            for i in self.primeImplicants:
+                print(i)
+                for j in i["hex"]:
+                    if binToHex(x) == j:
+                        count += 1
+                        match = i
+            if count == 1:
+                if match not in essentialImplicants:
+                    essentialImplicants.append(match)
+
+        for x in essentialImplicants:
+            for i in x["hex"]:
+                if i not in usedImplicants:
+                    usedImplicants.append(i)
+
+        for i in self.miniTermsMerged:
+            if binToHex(i) not in usedImplicants:
+                missingImplicants.append(binToHex(i))
+
+        for i in self.primeImplicants:
+            count = 0
+            for j in i["hex"]:
+                if j in missingImplicants:
+                        count += 1
+                if count > maximum:
+                    maximum = count
+        
+        for implicant in self.primeImplicants:
+            count = 0
+            for j in implicant["hex"]:
+                if j in missingImplicants:
+                        count += 1
+                if count == maximum:
+                    if implicant not in selectedImplicants:
+                        selectedImplicants.append(i)
+        
+        #tomamos el implicante con menos unos para optimizar memoria
+        for implicant in selectedImplicants:
+            count = 0
+            for i in range(len(implicant["bin"])):
+                if implicant["bin"][i] =='0' or implicant["bin"][i]=='1':
+                    count+=1
+            if count<minimum:
+                minimum=count
+
+        for implicant in selectedImplicants:
+            count = 0
+            for i in range(len(implicant["bin"])):
+                if implicant["bin"][i] =='0' or implicant["bin"][i]=='1':
+                    count+=1
+            if count==minimum:
+                if implicant not in essentialImplicants:
+                    essentialImplicants.append(implicant)
+
+        print(essentialImplicants)
+        self.essentialImplicants = [x["bin"] for x in essentialImplicants]
+   

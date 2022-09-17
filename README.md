@@ -1,6 +1,6 @@
 ###### Quine McCluskey and Petrick Method
-> A Python implementation of the Tabular Quine McCluskey's method and Petrick to
-minimize karnaugh maps of boolean functions made by Ian Achio and Jaron Cascante
+> A simple python implementation of the Tabular Quine McCluskey's Algorithm to
+minimize karnaugh maps made by Ian Achio and Jaron Cascante
 
 ##### Folder Structure:
 - `main.py` : Initialize the program
